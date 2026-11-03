@@ -13,6 +13,17 @@ body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "Noto Sans Th
 .hud div{padding:8px 12px;border-right:1px solid var(--ln)}.hud small{display:block;color:var(--mu);font-size:12px}
 .hud b{font:600 28px/1.1 "Arial Narrow",system-ui,sans-serif;font-variant-numeric:tabular-nums}.hud .h b{color:var(--hot)}
 .stage{position:relative;background:#000;aspect-ratio:16/9}
+#map{position:static;inset:auto;width:calc(100% - 24px);height:auto;aspect-ratio:536/244;margin:8px 12px;border-radius:8px;display:block;background:#15805a}
+#rot{display:none;position:absolute;inset:0;z-index:3;background:rgba(0,0,0,.8);color:#fff;align-items:center;justify-content:center;text-align:center;font-size:18px}
+#lw.full{position:fixed;inset:0;z-index:30;background:#000}
+#lw.full .stage{position:absolute;inset:0;aspect-ratio:auto}
+#lw.full .hud{position:absolute;top:0;left:0;right:0;z-index:2;background:rgba(17,36,55,.72);padding-top:env(safe-area-inset-top)}
+#lw.full #map{position:absolute;right:calc(8px + env(safe-area-inset-right));bottom:8px;width:34%;margin:0;z-index:2;opacity:.92}
+#lw.full .ctl{position:absolute;left:calc(8px + env(safe-area-inset-left));bottom:8px;max-width:58%;z-index:2;background:rgba(11,22,35,.78);border-radius:10px;padding:8px}
+#lw.full .stats{display:none}
+@media (orientation:portrait){#lw.full #rot{display:flex}}
+.ctl{padding:12px}
+nav{z-index:10}
 video,canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .p{padding:12px}.c{background:var(--pn);border:1px solid var(--ln);border-radius:12px;padding:12px;margin-bottom:12px}
 button,select,input{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--ln);border-radius:8px;padding:9px 12px}
@@ -30,14 +41,15 @@ nav button[aria-selected=true]{color:var(--ac);font-weight:700;box-shadow:inset 
 </head>
 <body>
 <section id="v-live">
+<div id="lw">
   <div class="hud"><div><small>เวลาแรลลี่</small><b id="rt">00:00.0</b></div><div><small>จำนวนลูก</small><b id="rc">0</b></div><div class="h"><small>ความเร็วลูก กม./ชม.</small><b id="sp">0</b></div></div>
-  <div class="stage"><video id="V" playsinline muted></video><canvas id="cv"></canvas></div>
-  <div class="p">
-    <div class="r"><button id="bCam">1. เปิดกล้อง</button><button id="bCal">2. ตั้งคอร์ต</button>
-      <label class="mu">ชื่อที่จะผูก <select id="who"></select></label><button id="bGo" class="pri">3. เริ่มบันทึก</button></div>
-    <p id="hint">กด "เปิดกล้อง" เพื่อเริ่ม</p>
-    <div class="c" style="margin-top:12px"><table><thead><tr><th>ผู้เล่น</th><th class="n">ตี</th><th class="n">เร็วสุด</th><th class="n">วิ่ง (ม.)</th></tr></thead><tbody id="stat"></tbody></table></div>
-  </div>
+  <div class="stage"><video id="V" playsinline muted></video><canvas id="cv"></canvas><div id="rot">หมุนมือถือเป็นแนวนอน<br>เพื่อดูภาพเต็มจอ</div></div>
+  <canvas id="map" width="536" height="244" role="img" aria-label="แผนผังมุมสูงแสดงตำแหน่งผู้เล่น"></canvas>
+  <div class="ctl"><div class="r"><button id="bCam">1. เปิดกล้อง</button><button id="bCal">2. ตั้งคอร์ต</button>
+    <label class="mu">ชื่อที่จะผูก <select id="who"></select></label><button id="bGo" class="pri">3. เริ่มบันทึก</button><button id="bFull">เต็มจอ / ออก</button></div>
+    <p id="hint">กด "เปิดกล้อง" เพื่อเริ่ม</p></div>
+  <div class="p stats"><div class="c"><table><thead><tr><th>ผู้เล่น</th><th class="n">ตี</th><th class="n">เร็วสุด</th><th class="n">วิ่ง (ม.)</th></tr></thead><tbody id="stat"></tbody></table></div></div>
+</div>
 </section>
 
 <section id="v-pl" class="p" hidden>
@@ -71,7 +83,7 @@ const SV=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const COL=['#33b5f0','#3ed3a0','#f5a83a','#a58cf0','#ff7a90','#e6e36a'];
 let names=LS('names',['Van','Ohm','Sunny','Arm']), url=LS('url','https://script.google.com/macros/s/AKfycby1l0bu6JVazdTjaq0lpB_cliKdbG37COOP3Y8YGrCtnPJ-R7byh0V7LAojLdBp6lPeQw/exec');
 let det=null,H=null,pts=[],step='idle',run=false,mid='',t0=0;
-let P={},assign={},S={},poses=[],shut=null,hist=[],lastSeen=0,rally=0,rStart=0,rc=0,peak=0,lastSign=0,spd=0,lastPose=0;
+let trail={},shutC=null,P={},assign={},S={},poses=[],shut=null,hist=[],lastSeen=0,rally=0,rStart=0,rc=0,peak=0,lastSign=0,spd=0,lastPose=0;
 const q={Shots:[],Positions:[]};
 const hint=t=>$('#hint').textContent=t;
 
@@ -86,7 +98,7 @@ const toCourt=(x,y)=>{const w=H[6]*x+H[7]*y+1;return[(H[0]*x+H[1]*y+H[2])/w,(H[3
 const CORN=['มุมซ้ายล่าง (ใกล้กล้อง)','มุมขวาล่าง','มุมขวาบน (ไกลกล้อง)','มุมซ้ายบน'];
 
 // ---------- camera + model ----------
-$('#bCam').onclick=async()=>{
+$('#bCam').onclick=async()=>{full(true);
  try{hint('กำลังเปิดกล้อง…');
   V.srcObject=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}},audio:false});
   await V.play();cv.width=V.videoWidth;cv.height=V.videoHeight;
@@ -110,6 +122,7 @@ function players(){P={};const t=performance.now();
   const o={box,fx,fy,name:assign[p.id]||'?'};
   if(H){[o.cx,o.cy]=toCourt(fx,fy);const s=S[o.name]=S[o.name]||{n:0,top:0,d:0,lx:null,ly:null};
    if(o.name!=='?'){if(s.lx!=null){const d=Math.hypot(o.cx-s.lx,o.cy-s.ly);if(d<2)s.d+=d}s.lx=o.cx;s.ly=o.cy}}
+  if(H){const key=o.name==='?'?'?'+p.id:o.name;(trail[key]=trail[key]||[]).push([o.cx,o.cy]);if(trail[key].length>50)trail[key].shift()}
   P[p.id]=o}
  if(run&&H&&t-(players.lp||0)>500){players.lp=t;const ts=((t-t0)/1000).toFixed(1);
   for(const id in P){const o=P[id];if(o.name!=='?')q.Positions.push([mid,+ts,o.name,+o.cx.toFixed(2),+o.cy.toFixed(2)])}}}
@@ -128,7 +141,7 @@ function motion(t){const w=200,h=Math.round(w*V.videoHeight/V.videoWidth),k=w/V.
  prev=gr;if(!best||!H)return;
  const[cx,cy]=toCourt(best.x,best.y);if(cx<-2||cx>8.1||cy<-2||cy>15.4)return;
  if(t-lastSeen>3000){rally++;rStart=t;rc=0;lastSign=0;hist=[]}
- lastSeen=t;shut={x:best.x,y:best.y};hist.push({t,cx,cy});if(hist.length>8)hist.shift();
+ lastSeen=t;shut={x:best.x,y:best.y};shutC={cx,cy,t};hist.push({t,cx,cy});if(hist.length>8)hist.shift();
  const a=hist.find(p=>t-p.t>=150&&t-p.t<500);
  if(a){const v=Math.hypot(cx-a.cx,cy-a.cy)/((t-a.t)/1000)*3.6;
   if(v<130){spd=spd*.5+v*.5;peak=Math.max(peak,spd);$('#sp').textContent=Math.round(spd);
@@ -137,10 +150,33 @@ function shot(t,cx,cy){let n='?',bd=1e9;for(const id in P){const o=P[id],d=Math.
  rc++;const sp=Math.round(peak);if(run){q.Shots.push([mid,+((t-t0)/1000).toFixed(1),rally,n,sp,+cx.toFixed(2),+cy.toFixed(2)]);
   const s=S[n]=S[n]||{n:0,top:0,d:0,lx:null,ly:null};s.n++;s.top=Math.max(s.top,sp);stats()}peak=0}
 
+// ---------- fullscreen landscape ----------
+let wl=null;
+async function full(on){const w=$('#lw');w.classList.toggle('full',on);
+ try{if(on){if(w.requestFullscreen)await w.requestFullscreen();try{await screen.orientation.lock('landscape')}catch(e){}try{wl=await navigator.wakeLock.request('screen')}catch(e){}}
+  else{try{screen.orientation.unlock()}catch(e){}if(wl){wl.release();wl=null}if(document.fullscreenElement)await document.exitFullscreen()}}catch(e){}}
+document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)$('#lw').classList.remove('full')});
+$('#bFull').onclick=()=>full(!$('#lw').classList.contains('full'));
+
+// ---------- top-down court map ----------
+const mp=$('#map'),mg=mp.getContext('2d'),K=40;
+function drawMap(t){mg.clearRect(0,0,536,244);mg.fillStyle='#15805a';mg.fillRect(0,0,536,244);
+ mg.strokeStyle='rgba(233,255,245,.9)';mg.lineWidth=2;
+ const L=(a,b,c,d)=>{mg.beginPath();mg.moveTo(a*K,b*K);mg.lineTo(c*K,d*K);mg.stroke()};
+ mg.strokeRect(0,0,13.4*K,6.1*K);L(0,.46,13.4,.46);L(0,5.64,13.4,5.64);L(4.72,0,4.72,6.1);L(8.68,0,8.68,6.1);L(.76,0,.76,6.1);L(12.64,0,12.64,6.1);L(0,3.05,4.72,3.05);L(8.68,3.05,13.4,3.05);
+ mg.lineWidth=4;L(6.7,0,6.7,6.1);
+ const cl=k=>{const i=names.indexOf(k);return i<0?'#aaa':COL[i%6]};
+ mg.lineWidth=3;mg.lineJoin='round';
+ for(const k in trail){const a=trail[k];if(a.length<2)continue;mg.strokeStyle=cl(k);mg.globalAlpha=.55;mg.beginPath();a.forEach((p,i)=>i?mg.lineTo(p[1]*K,p[0]*K):mg.moveTo(p[1]*K,p[0]*K));mg.stroke()}
+ mg.globalAlpha=1;mg.font='bold 15px sans-serif';mg.textAlign='center';
+ if(H)for(const id in P){const o=P[id],x=o.cy*K,y=o.cx*K;mg.fillStyle=cl(o.name);mg.strokeStyle='#fff';mg.lineWidth=2;mg.beginPath();mg.arc(x,y,10,0,7);mg.fill();mg.stroke();mg.fillStyle='#fff';mg.fillText(o.name,x,y-15)}
+ if(shutC&&t-shutC.t<400){mg.fillStyle='#fff';mg.beginPath();mg.arc(shutC.cy*K,shutC.cx*K,6,0,7);mg.fill();mg.fillText(Math.round(spd)+' กม./ชม.',shutC.cy*K,shutC.cx*K-12)}}
+drawMap(0);
+
 // ---------- loop / draw ----------
 async function loop(){if(!det)return;const t=performance.now();
  if(t-lastPose>180){lastPose=t;poses=await det.estimatePoses(V);players()}
- motion(t);draw(t);requestAnimationFrame(loop)}
+ motion(t);draw(t);drawMap(t);requestAnimationFrame(loop)}
 function draw(t){g.clearRect(0,0,cv.width,cv.height);g.lineWidth=3;g.font='bold 22px sans-serif';
  g.strokeStyle='#33b5f0';if(pts.length){g.beginPath();pts.forEach((p,i)=>i?g.lineTo(...p):g.moveTo(...p));if(pts.length===4)g.closePath();g.stroke()}
  for(const id in P){const o=P[id],i=Math.max(0,names.indexOf(o.name)),c=o.name==='?'?'#888':COL[i%6];g.strokeStyle=c;g.strokeRect(o.box[0],o.box[1],o.box[2]-o.box[0],o.box[3]-o.box[1]);g.fillStyle=c;g.fillText(o.name,o.box[0],o.box[1]-6)}
