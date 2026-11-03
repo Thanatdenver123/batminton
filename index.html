@@ -1,338 +1,180 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Badminton Analytics Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body {
-            background-color: #1a1a2e; /* Dark theme */
-            color: #ffffff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        .progress-bar {
-            transition: width 0.5s ease-in-out;
-        }
-        .player-card {
-            background: linear-gradient(145deg, #16213e, #0f3460);
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Smash Log</title>
+<style>
+:root{--bg:#0b1623;--pn:#112437;--ln:#1f3a52;--ink:#e8f1f9;--mu:#8aa0b5;--ac:#33b5f0;--hot:#f5a83a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "Noto Sans Thai",system-ui,sans-serif;max-width:560px;margin-inline:auto;padding:env(safe-area-inset-top) 0 80px}
+.hud{display:grid;grid-template-columns:1.3fr 1fr 1fr;background:var(--pn);border-bottom:1px solid var(--ln)}
+.hud div{padding:8px 12px;border-right:1px solid var(--ln)}.hud small{display:block;color:var(--mu);font-size:12px}
+.hud b{font:600 28px/1.1 "Arial Narrow",system-ui,sans-serif;font-variant-numeric:tabular-nums}.hud .h b{color:var(--hot)}
+.stage{position:relative;background:#000;aspect-ratio:16/9}
+video,canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.p{padding:12px}.c{background:var(--pn);border:1px solid var(--ln);border-radius:12px;padding:12px;margin-bottom:12px}
+button,select,input{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--ln);border-radius:8px;padding:9px 12px}
+button.pri{background:var(--ac);border-color:var(--ac);color:#04121d;font-weight:700}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.r{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.r input{flex:1;min-width:0}
+#hint{color:var(--hot);margin:8px 0 0}.mu{color:var(--mu);font-size:13px}
+table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1px solid var(--ln);text-align:left}th{color:var(--mu);font-weight:400;font-size:13px}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+nav{position:fixed;bottom:0;left:0;right:0;max-width:560px;margin:auto;display:flex;background:var(--pn);border-top:1px solid var(--ln);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;border-radius:0;background:none;color:var(--mu);padding:14px 4px}
+nav button[aria-selected=true]{color:var(--ac);font-weight:700;box-shadow:inset 0 3px 0 var(--ac)}
+[hidden]{display:none!important}
+</style>
 </head>
-<body class="min-h-screen p-4 flex justify-center">
+<body>
+<section id="v-live">
+  <div class="hud"><div><small>เวลาแรลลี่</small><b id="rt">00:00.0</b></div><div><small>จำนวนลูก</small><b id="rc">0</b></div><div class="h"><small>ความเร็วลูก กม./ชม.</small><b id="sp">0</b></div></div>
+  <div class="stage"><video id="V" playsinline muted></video><canvas id="cv"></canvas></div>
+  <div class="p">
+    <div class="r"><button id="bCam">1. เปิดกล้อง</button><button id="bCal">2. ตั้งคอร์ต</button>
+      <label class="mu">ชื่อที่จะผูก <select id="who"></select></label><button id="bGo" class="pri">3. เริ่มบันทึก</button></div>
+    <p id="hint">กด "เปิดกล้อง" เพื่อเริ่ม</p>
+    <div class="c" style="margin-top:12px"><table><thead><tr><th>ผู้เล่น</th><th class="n">ตี</th><th class="n">เร็วสุด</th><th class="n">วิ่ง (ม.)</th></tr></thead><tbody id="stat"></tbody></table></div>
+  </div>
+</section>
 
-    <!-- Mobile-sized container to simulate an app view -->
-    <div class="w-full max-w-md bg-gray-900 shadow-2xl rounded-2xl overflow-hidden border border-gray-700 flex flex-col relative">
-        
-        <!-- Header / Status Bar -->
-        <div class="bg-red-600 text-white text-xs font-bold px-4 py-1 flex items-center justify-between">
-            <span class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span> LIVE RALLY
-            </span>
-            <span>JONGNOW SYSTEM</span>
-        </div>
+<section id="v-pl" class="p" hidden>
+  <div class="c"><b>เพิ่มผู้เล่น</b><div class="r" style="margin-top:8px"><input id="nm" placeholder="ชื่อผู้เล่น" aria-label="ชื่อผู้เล่น"><button class="pri" id="bAdd">เพิ่ม</button></div></div>
+  <div class="c" id="plist"></div>
+</section>
 
-        <!-- Top Score & Rally Info -->
-        <div class="grid grid-cols-3 gap-2 px-4 py-3 bg-gray-800 border-b border-gray-700 text-center">
-            <div>
-                <div class="text-gray-400 text-xs uppercase tracking-wider">Rally Time</div>
-                <div class="text-2xl font-bold font-mono text-cyan-400" id="rally-time">00:23.63</div>
-            </div>
-            <div class="border-l border-r border-gray-600">
-                <div class="text-gray-400 text-xs uppercase tracking-wider">Rally Count</div>
-                <div class="text-2xl font-bold" id="rally-count">21</div>
-            </div>
-            <div>
-                <div class="text-gray-400 text-xs uppercase tracking-wider">Shot Speed</div>
-                <div class="text-2xl font-bold text-yellow-400"><span id="current-speed">17</span> <span class="text-xs text-gray-300">km/h</span></div>
-            </div>
-        </div>
+<section id="v-hi" class="p" hidden>
+  <div class="r" style="margin-bottom:12px"><button id="bLoad" class="pri">โหลดสถิติจาก Google Sheet</button></div>
+  <div class="c"><b>สรุปรายผู้เล่น</b><table><thead><tr><th>ผู้เล่น</th><th class="n">ลูกตี</th><th class="n">เร็วสุด</th><th class="n">เฉลี่ย</th></tr></thead><tbody id="hp"></tbody></table></div>
+  <div class="c"><b>แมตช์ย้อนหลัง</b><table><tbody id="hm"></tbody></table></div>
+</section>
 
-        <!-- Team Matchup -->
-        <div class="bg-black py-2 flex justify-center items-center gap-4 text-sm font-bold tracking-widest border-b-4 border-cyan-500">
-            <span class="text-cyan-400">VAN • OHM</span>
-            <span class="text-yellow-500">VS</span>
-            <span class="text-orange-400">SUNNY • ARM</span>
-        </div>
+<section id="v-st" class="p" hidden>
+  <div class="c"><b>Apps Script Web app URL</b><p class="mu">ได้จากการ Deploy ไฟล์ Code.gs (ลงท้ายด้วย /exec)</p>
+    <div class="r"><input id="url" placeholder="https://script.google.com/macros/s/.../exec"><button class="pri" id="bUrl">บันทึก</button></div></div>
+  <div class="c mu">ความเร็วลูกเป็นค่าประมาณจากภาพ ความแม่นขึ้นกับมุมกล้อง แสง และ fps แนะนำตั้งกล้องนิ่งหลังคอร์ตสูงระดับเอวขึ้นไป เห็นเส้นสนามครบ 4 มุม</div>
+</section>
 
-        <!-- Video / Court Simulation Area -->
-        <div class="relative w-full h-56 bg-gray-800 flex items-center justify-center overflow-hidden border-b border-gray-700">
-            <!-- Simulated Video Background -->
-            <img src="https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=800" alt="Court" class="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-luminosity">
-            
-            <!-- Tracking Overlay Simulation -->
-            <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-90"></div>
-            
-            <!-- Simulated Player Tags on Court -->
-            <div class="absolute top-1/4 left-1/3 bg-slate-900/80 backdrop-blur text-white text-[10px] px-2 py-0.5 rounded border border-green-500 shadow-lg flex justify-between gap-2 w-16"><span class="text-green-400">OHM</span> <span class="font-bold" id="tag-ohm">63</span></div>
-            <div class="absolute top-1/3 left-1/4 bg-slate-900/80 backdrop-blur text-white text-[10px] px-2 py-0.5 rounded border border-cyan-500 shadow-lg flex justify-between gap-2 w-16"><span class="text-cyan-400">Van</span> <span class="font-bold" id="tag-van">53</span></div>
-            <div class="absolute bottom-1/4 right-1/3 bg-slate-900/80 backdrop-blur text-white text-[10px] px-2 py-0.5 rounded border border-orange-500 shadow-lg flex justify-between gap-2 w-16"><span class="text-orange-400">Sunny</span> <span class="font-bold" id="tag-sunny">62</span></div>
-            <div class="absolute bottom-1/3 right-1/4 bg-slate-900/80 backdrop-blur text-white text-[10px] px-2 py-0.5 rounded border border-purple-500 shadow-lg flex justify-between gap-2 w-16"><span class="text-purple-400">ARM</span> <span class="font-bold" id="tag-arm">47</span></div>
+<nav role="tablist">
+  <button role="tab" aria-selected="true" data-v="live">สด</button><button role="tab" aria-selected="false" data-v="pl">ผู้เล่น</button>
+  <button role="tab" aria-selected="false" data-v="hi">ประวัติ</button><button role="tab" aria-selected="false" data-v="st">ตั้งค่า</button>
+</nav>
 
-            <!-- Simulated Shuttlecock Speed Lock-on -->
-            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-80 px-3 py-1.5 rounded border border-cyan-400 flex items-center gap-2 shadow-[0_0_15px_rgba(34,211,238,0.4)] transition-all duration-200" id="lock-on-container">
-                <span class="text-cyan-400 text-[10px] font-bold tracking-widest">LOCK ON</span>
-                <span class="font-bold font-mono text-xl" id="lock-on-speed">26 km/h</span>
-            </div>
-        </div>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+<script>
+const $=s=>document.querySelector(s), V=$('#V'), cv=$('#cv'), g=cv.getContext('2d');
+const LS=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}};
+const SV=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+const COL=['#33b5f0','#3ed3a0','#f5a83a','#a58cf0','#ff7a90','#e6e36a'];
+let names=LS('names',['Van','Ohm','Sunny','Arm']), url=LS('url','https://script.google.com/macros/s/AKfycby1l0bu6JVazdTjaq0lpB_cliKdbG37COOP3Y8YGrCtnPJ-R7byh0V7LAojLdBp6lPeQw/exec');
+let det=null,H=null,pts=[],step='idle',run=false,mid='',t0=0;
+let P={},assign={},S={},poses=[],shut=null,hist=[],lastSeen=0,rally=0,rStart=0,rc=0,peak=0,lastSign=0,spd=0,lastPose=0;
+const q={Shots:[],Positions:[]};
+const hint=t=>$('#hint').textContent=t;
 
-        <!-- Stats Section (Scrollable) -->
-        <div class="flex-1 bg-gray-900 p-4 overflow-y-auto">
-            
-            <!-- Player Stats Overview -->
-            <div class="grid grid-cols-2 gap-4 mb-6">
-                
-                <!-- Player 1 -->
-                <div class="player-card p-3 rounded-lg border border-cyan-900">
-                    <div class="flex justify-between items-end mb-1">
-                        <span class="font-bold text-cyan-400 text-sm">Van</span>
-                        <span class="text-xs text-gray-400">พลังกาย <span class="text-white font-bold text-lg" id="energy-van">53</span></span>
-                    </div>
-                    <div class="w-full bg-gray-700 rounded-full h-1.5 mb-2">
-                        <div class="bg-cyan-500 h-1.5 rounded-full progress-bar" style="width: 53%"></div>
-                    </div>
-                    <div class="flex justify-between text-xs">
-                        <span class="text-gray-400">MOVE</span>
-                        <span class="font-mono">26.2 m</span>
-                    </div>
-                </div>
+// ---------- court calibration (homography) ----------
+function solveH(src){const dst=[[0,0],[6.1,0],[6.1,13.4],[0,13.4]],A=[],b=[];
+ src.forEach(([x,y],i)=>{const[u,v]=dst[i];A.push([x,y,1,0,0,0,-u*x,-u*y],[0,0,0,x,y,1,-v*x,-v*y]);b.push(u,v)});
+ for(let i=0;i<8;i++){let p=i;for(let r=i+1;r<8;r++)if(Math.abs(A[r][i])>Math.abs(A[p][i]))p=r;
+  [A[i],A[p]]=[A[p],A[i]];[b[i],b[p]]=[b[p],b[i]];
+  for(let r=i+1;r<8;r++){const f=A[r][i]/A[i][i];for(let c=i;c<8;c++)A[r][c]-=f*A[i][c];b[r]-=f*b[i]}}
+ const x=Array(8);for(let i=7;i>=0;i--){let s=b[i];for(let c=i+1;c<8;c++)s-=A[i][c]*x[c];x[i]=s/A[i][i]}return x}
+const toCourt=(x,y)=>{const w=H[6]*x+H[7]*y+1;return[(H[0]*x+H[1]*y+H[2])/w,(H[3]*x+H[4]*y+H[5])/w]};
+const CORN=['มุมซ้ายล่าง (ใกล้กล้อง)','มุมขวาล่าง','มุมขวาบน (ไกลกล้อง)','มุมซ้ายบน'];
 
-                <!-- Player 2 -->
-                <div class="player-card p-3 rounded-lg border border-green-900">
-                    <div class="flex justify-between items-end mb-1">
-                        <span class="font-bold text-green-400 text-sm">OHM</span>
-                        <span class="text-xs text-gray-400">พลังกาย <span class="text-white font-bold text-lg" id="energy-ohm">63</span></span>
-                    </div>
-                    <div class="w-full bg-gray-700 rounded-full h-1.5 mb-2">
-                        <div class="bg-green-500 h-1.5 rounded-full progress-bar" style="width: 63%"></div>
-                    </div>
-                    <div class="flex justify-between text-xs">
-                        <span class="text-gray-400">MOVE</span>
-                        <span class="font-mono">21.0 m</span>
-                    </div>
-                </div>
+// ---------- camera + model ----------
+$('#bCam').onclick=async()=>{
+ try{hint('กำลังเปิดกล้อง…');
+  V.srcObject=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}},audio:false});
+  await V.play();cv.width=V.videoWidth;cv.height=V.videoHeight;
+  hint('กำลังโหลดโมเดลตรวจจับคน (ครั้งแรกอาจใช้เวลาสักครู่)…');
+  await tf.ready();
+  det=await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet,{modelType:poseDetection.movenet.modelType.MULTIPOSE_LIGHTNING,enableTracking:true,trackerType:poseDetection.TrackerType.BoundingBox});
+  step='idle';hint('กล้องพร้อม กด "ตั้งคอร์ต" แล้วแตะ 4 มุมสนามบนภาพ');view();
+ }catch(e){hint('เปิดกล้องไม่ได้: '+e.message+' (ต้องเปิดผ่าน https และอนุญาตกล้อง)')}};
+$('#bCal').onclick=()=>{if(!det)return hint('เปิดกล้องก่อน');pts=[];H=null;step='cal';hint('แตะ '+CORN[0])};
+cv.onclick=e=>{const r=cv.getBoundingClientRect(),s=Math.min(r.width/cv.width,r.height/cv.height),
+ ox=(r.width-cv.width*s)/2,oy=(r.height-cv.height*s)/2,x=(e.clientX-r.left-ox)/s,y=(e.clientY-r.top-oy)/s;
+ if(step==='cal'){pts.push([x,y]);if(pts.length<4)return hint('แตะ '+CORN[pts.length]);
+  H=solveH(pts);step='ready';return hint('ตั้งคอร์ตเสร็จ เลือกชื่อ แล้วแตะที่ตัวผู้เล่นเพื่อผูกชื่อ จากนั้นกดเริ่มบันทึก')}
+ for(const id in P){const b=P[id].box;if(x>b[0]&&x<b[2]&&y>b[1]&&y<b[3]){assign[id]=$('#who').value;hint('ผูก '+assign[id]+' แล้ว');return}}};
 
-                <!-- Player 3 -->
-                <div class="player-card p-3 rounded-lg border border-orange-900">
-                    <div class="flex justify-between items-end mb-1">
-                        <span class="font-bold text-orange-400 text-sm">Sunny</span>
-                        <span class="text-xs text-gray-400">พลังกาย <span class="text-white font-bold text-lg" id="energy-sunny">62</span></span>
-                    </div>
-                    <div class="w-full bg-gray-700 rounded-full h-1.5 mb-2">
-                        <div class="bg-orange-500 h-1.5 rounded-full progress-bar" style="width: 62%"></div>
-                    </div>
-                    <div class="flex justify-between text-xs">
-                        <span class="text-gray-400">MOVE</span>
-                        <span class="font-mono">22.3 m</span>
-                    </div>
-                </div>
+// ---------- player tracking ----------
+function players(){P={};const t=performance.now();
+ for(const p of poses){if(p.id==null)continue;const k=p.keypoints.filter(k=>k.score>.25);if(k.length<5)continue;
+  const xs=k.map(a=>a.x),ys=k.map(a=>a.y),box=[Math.min(...xs)-15,Math.min(...ys)-25,Math.max(...xs)+15,Math.max(...ys)+25];
+  const f=[15,16].map(i=>p.keypoints[i]).filter(a=>a.score>.25),fx=f.length?f.reduce((s,a)=>s+a.x,0)/f.length:(box[0]+box[2])/2,fy=f.length?f.reduce((s,a)=>s+a.y,0)/f.length:box[3];
+  const o={box,fx,fy,name:assign[p.id]||'?'};
+  if(H){[o.cx,o.cy]=toCourt(fx,fy);const s=S[o.name]=S[o.name]||{n:0,top:0,d:0,lx:null,ly:null};
+   if(o.name!=='?'){if(s.lx!=null){const d=Math.hypot(o.cx-s.lx,o.cy-s.ly);if(d<2)s.d+=d}s.lx=o.cx;s.ly=o.cy}}
+  P[p.id]=o}
+ if(run&&H&&t-(players.lp||0)>500){players.lp=t;const ts=((t-t0)/1000).toFixed(1);
+  for(const id in P){const o=P[id];if(o.name!=='?')q.Positions.push([mid,+ts,o.name,+o.cx.toFixed(2),+o.cy.toFixed(2)])}}}
 
-                <!-- Player 4 -->
-                <div class="player-card p-3 rounded-lg border border-purple-900">
-                    <div class="flex justify-between items-end mb-1">
-                        <span class="font-bold text-purple-400 text-sm">ARM</span>
-                        <span class="text-xs text-gray-400">พลังกาย <span class="text-white font-bold text-lg" id="energy-arm">47</span></span>
-                    </div>
-                    <div class="w-full bg-gray-700 rounded-full h-1.5 mb-2">
-                        <div class="bg-purple-500 h-1.5 rounded-full progress-bar" style="width: 47%"></div>
-                    </div>
-                    <div class="flex justify-between text-xs">
-                        <span class="text-gray-400">MOVE</span>
-                        <span class="font-mono">30.1 m</span>
-                    </div>
-                </div>
+// ---------- shuttle motion detection ----------
+const M=document.createElement('canvas'),mc=M.getContext('2d',{willReadFrequently:true});let prev=null;
+function motion(t){const w=200,h=Math.round(w*V.videoHeight/V.videoWidth),k=w/V.videoWidth;M.width=w;M.height=h;mc.drawImage(V,0,0,w,h);
+ const d=mc.getImageData(0,0,w,h).data,gr=new Uint8Array(w*h);for(let i=0;i<gr.length;i++)gr[i]=(d[i*4]+d[i*4+1]+d[i*4+2])/3;
+ let best=null;
+ if(prev&&prev.length===gr.length){const cells=new Map(),bx=Object.values(P).map(o=>o.box.map(v=>v*k));
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){if(Math.abs(gr[y*w+x]-prev[y*w+x])<38)continue;
+   if(bx.some(b=>x>b[0]&&x<b[2]&&y>b[1]&&y<b[3]))continue;
+   const key=(y>>2)*100+(x>>2),c=cells.get(key)||{n:0,sx:0,sy:0};c.n++;c.sx+=x;c.sy+=y;cells.set(key,c)}
+  for(const c of cells.values())if(c.n>=3&&(!best||c.n>best.n))best=c;
+  if(best)best={x:best.sx/best.n/k,y:best.sy/best.n/k}}
+ prev=gr;if(!best||!H)return;
+ const[cx,cy]=toCourt(best.x,best.y);if(cx<-2||cx>8.1||cy<-2||cy>15.4)return;
+ if(t-lastSeen>3000){rally++;rStart=t;rc=0;lastSign=0;hist=[]}
+ lastSeen=t;shut={x:best.x,y:best.y};hist.push({t,cx,cy});if(hist.length>8)hist.shift();
+ const a=hist.find(p=>t-p.t>=150&&t-p.t<500);
+ if(a){const v=Math.hypot(cx-a.cx,cy-a.cy)/((t-a.t)/1000)*3.6;
+  if(v<130){spd=spd*.5+v*.5;peak=Math.max(peak,spd);$('#sp').textContent=Math.round(spd);
+   const sg=Math.sign(cy-a.cy);if(sg&&lastSign&&sg!==lastSign&&peak>8)shot(t,cx,cy);if(sg)lastSign=sg}}}
+function shot(t,cx,cy){let n='?',bd=1e9;for(const id in P){const o=P[id],d=Math.hypot(o.cx-cx,o.cy-cy);if(d<bd){bd=d;n=o.name}}
+ rc++;const sp=Math.round(peak);if(run){q.Shots.push([mid,+((t-t0)/1000).toFixed(1),rally,n,sp,+cx.toFixed(2),+cy.toFixed(2)]);
+  const s=S[n]=S[n]||{n:0,top:0,d:0,lx:null,ly:null};s.n++;s.top=Math.max(s.top,sp);stats()}peak=0}
 
-            </div>
+// ---------- loop / draw ----------
+async function loop(){if(!det)return;const t=performance.now();
+ if(t-lastPose>180){lastPose=t;poses=await det.estimatePoses(V);players()}
+ motion(t);draw(t);requestAnimationFrame(loop)}
+function draw(t){g.clearRect(0,0,cv.width,cv.height);g.lineWidth=3;g.font='bold 22px sans-serif';
+ g.strokeStyle='#33b5f0';if(pts.length){g.beginPath();pts.forEach((p,i)=>i?g.lineTo(...p):g.moveTo(...p));if(pts.length===4)g.closePath();g.stroke()}
+ for(const id in P){const o=P[id],i=Math.max(0,names.indexOf(o.name)),c=o.name==='?'?'#888':COL[i%6];g.strokeStyle=c;g.strokeRect(o.box[0],o.box[1],o.box[2]-o.box[0],o.box[3]-o.box[1]);g.fillStyle=c;g.fillText(o.name,o.box[0],o.box[1]-6)}
+ if(shut&&t-lastSeen<400){g.fillStyle='#fff';g.beginPath();g.arc(shut.x,shut.y,8,0,7);g.fill()}
+ if(run){const e=t-rStart,active=t-lastSeen<3000;$('#rt').textContent=active?String(Math.floor(e/60000)).padStart(2,'0')+':'+(e/1000%60).toFixed(1).padStart(4,'0'):$('#rt').textContent;$('#rc').textContent=rc}}
+function stats(){$('#stat').innerHTML=names.map(n=>{const s=S[n]||{n:0,top:0,d:0};return`<tr><td>${n}</td><td class=n>${s.n}</td><td class=n>${s.top}</td><td class=n>${s.d.toFixed(1)}</td></tr>`}).join('')}
 
-            <!-- Shot Log Section -->
-            <div>
-                <h3 class="text-sm font-bold text-gray-400 mb-2 border-b border-gray-700 pb-1">SHOT LOG</h3>
-                <div class="space-y-2 text-sm" id="shot-log-container">
-                    <!-- Logs will be populated by JS -->
-                </div>
-            </div>
+// ---------- save to Google Sheet ----------
+async function flush(){if(!url||(!q.Shots.length&&!q.Positions.length&&!q.Matches))return;
+ const rows={Shots:q.Shots.splice(0),Positions:q.Positions.splice(0)};if(q.Matches){rows.Matches=q.Matches;q.Matches=null}
+ try{await fetch(url,{method:'POST',mode:'no-cors',body:JSON.stringify({rows})})}catch(e){for(const k in rows)if(k!=='Matches')q[k].unshift(...rows[k])}}
+setInterval(flush,5000);
+$('#bGo').onclick=()=>{
+ if(!run){if(!H)return hint('ตั้งคอร์ตให้เสร็จก่อน');if(!url)return hint('ใส่ URL ของ Apps Script ที่แท็บตั้งค่าก่อน');
+  mid=Date.now().toString(36);t0=performance.now();run=true;rally=0;S={};
+  q.Matches=[[mid,new Date().toISOString(),names.slice(0,4).join(' / '),'double']];
+  $('#bGo').textContent='หยุดบันทึก';hint('กำลังบันทึกลง Google Sheet…')}
+ else{run=false;flush();$('#bGo').textContent='3. เริ่มบันทึก';hint('บันทึกแล้ว ดูสถิติได้ที่แท็บประวัติ')}};
 
-        </div>
-
-        <!-- Setup Modal Overlay -->
-        <div id="setup-modal" class="absolute inset-0 bg-gray-900 z-50 flex flex-col p-6">
-            <h2 class="text-2xl font-bold text-white mb-6 text-center">ตั้งค่าผู้เล่น (Setup)</h2>
-            
-            <div class="space-y-4 flex-1">
-                <div class="bg-gray-800 p-4 rounded-lg border border-cyan-800">
-                    <h3 class="text-cyan-400 font-bold mb-2">Team 1 (ทีมเหย้า)</h3>
-                    <input type="text" id="input-p1" value="Van" class="w-full bg-gray-700 text-white px-3 py-2 rounded mb-2 border border-gray-600 focus:border-cyan-500 outline-none" placeholder="ชื่อผู้เล่น 1">
-                    <input type="text" id="input-p2" value="OHM" class="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:border-cyan-500 outline-none" placeholder="ชื่อผู้เล่น 2">
-                </div>
-
-                <div class="bg-gray-800 p-4 rounded-lg border border-orange-800">
-                    <h3 class="text-orange-400 font-bold mb-2">Team 2 (ทีมเยือน)</h3>
-                    <input type="text" id="input-p3" value="Sunny" class="w-full bg-gray-700 text-white px-3 py-2 rounded mb-2 border border-gray-600 focus:border-orange-500 outline-none" placeholder="ชื่อผู้เล่น 3">
-                    <input type="text" id="input-p4" value="ARM" class="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:border-orange-500 outline-none" placeholder="ชื่อผู้เล่น 4">
-                </div>
-            </div>
-
-            <button id="start-match-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg shadow-lg mt-4 transition-colors text-lg">
-                เริ่มเกม (Start Match)
-            </button>
-        </div>
-    </div>
-
-    <!-- JavaScript to simulate dynamic data update -->
-    <script>
-        // Store dynamic player names
-        let playersData = [
-            { id: 'van', name: 'Van', color: 'text-cyan-400' },
-            { id: 'ohm', name: 'OHM', color: 'text-green-400' },
-            { id: 'sunny', name: 'Sunny', color: 'text-orange-400' },
-            { id: 'arm', name: 'ARM', color: 'text-purple-400' }
-        ];
-
-        let mockShotLogs = [];
-
-        function renderShotLogs() {
-            const container = document.getElementById('shot-log-container');
-            container.innerHTML = '';
-            
-            mockShotLogs.forEach(log => {
-                const logEl = document.createElement('div');
-                logEl.className = 'flex justify-between items-center py-1 border-b border-gray-800/50';
-                const speedClass = log.speed >= 30 ? 'text-yellow-400 font-bold' : 'text-gray-300';
-
-                logEl.innerHTML = `
-                    <div class="flex items-center gap-4 w-1/2">
-                        <span class="text-gray-500 text-xs w-10 font-mono">${log.time}</span>
-                        <span class="font-semibold ${log.color}">${log.player}</span>
-                    </div>
-                    <div class="${speedClass} font-mono w-1/2 text-right">
-                        ${log.speed} km/h
-                    </div>
-                `;
-                container.appendChild(logEl);
-            });
-        }
-
-        function updateUIWithNames() {
-            // Update Headers (Team Matchup)
-            const teamHeaderSpan = document.querySelectorAll('.bg-black.py-2 span');
-            if (teamHeaderSpan.length >= 3) {
-                teamHeaderSpan[0].innerText = `${playersData[0].name.toUpperCase()} • ${playersData[1].name.toUpperCase()}`;
-                teamHeaderSpan[2].innerText = `${playersData[2].name.toUpperCase()} • ${playersData[3].name.toUpperCase()}`;
-            }
-
-            // Update Court Tags and Player Cards dynamically
-            ['van', 'ohm', 'sunny', 'arm'].forEach((id, index) => {
-                // Update tags on court image
-                const scoreSpan = document.getElementById(`tag-${id}`);
-                if (scoreSpan && scoreSpan.previousElementSibling) {
-                    scoreSpan.previousElementSibling.innerText = playersData[index].name;
-                }
-                
-                // Update names in the stats card list
-                const energySpan = document.getElementById(`energy-${id}`);
-                if (energySpan) {
-                    const nameContainer = energySpan.parentElement.previousElementSibling;
-                    if (nameContainer) {
-                        nameContainer.innerText = playersData[index].name;
-                    }
-                }
-            });
-        }
-
-        function simulateLiveMatch() {
-            let count = 0; 
-            let timeMs = 0; 
-
-            // Timer Loop
-            setInterval(() => {
-                timeMs += 33;
-                let minutes = Math.floor(timeMs / 60000);
-                let seconds = Math.floor((timeMs % 60000) / 1000);
-                let ms = Math.floor((timeMs % 1000) / 10);
-                let displayMin = minutes < 10 ? '0' + minutes : minutes;
-                let displaySec = seconds < 10 ? '0' + seconds : seconds;
-                let displayMs = ms < 10 ? '0' + ms : ms;
-                
-                document.getElementById('rally-time').innerText = `${displayMin}:${displaySec}.${displayMs}`;
-            }, 33);
-
-            // Action Loop (Simulating shots)
-            setInterval(() => {
-                const randomSpeed = Math.floor(Math.random() * (55 - 15 + 1)) + 15;
-                document.getElementById('current-speed').innerText = randomSpeed;
-                document.getElementById('lock-on-speed').innerText = randomSpeed + ' km/h';
-                
-                const lockOnContainer = document.getElementById('lock-on-container');
-                lockOnContainer.classList.add('scale-110', 'border-yellow-400', 'shadow-[0_0_20px_rgba(250,204,21,0.6)]');
-                lockOnContainer.classList.remove('border-cyan-400');
-                
-                setTimeout(() => {
-                    lockOnContainer.classList.remove('scale-110', 'border-yellow-400', 'shadow-[0_0_20px_rgba(250,204,21,0.6)]');
-                    lockOnContainer.classList.add('border-cyan-400');
-                }, 300);
-
-                const activePlayer = playersData[Math.floor(Math.random() * playersData.length)];
-                let currentTimeDisplay = document.getElementById('rally-time').innerText.substring(3); 
-                
-                mockShotLogs.unshift({
-                    time: currentTimeDisplay + 's',
-                    player: activePlayer.name,
-                    color: activePlayer.color,
-                    speed: randomSpeed
-                });
-                if (mockShotLogs.length > 7) mockShotLogs.pop();
-                renderShotLogs();
-
-                const el = document.getElementById(`energy-${activePlayer.id}`);
-                const tagEl = document.getElementById(`tag-${activePlayer.id}`);
-                if (el) {
-                    let currentVal = parseInt(el.innerText);
-                    if(currentVal > 5) {
-                        currentVal -= 1;
-                        el.innerText = currentVal;
-                        if(tagEl) tagEl.innerText = currentVal;
-                        el.parentElement.parentElement.nextElementSibling.firstElementChild.style.width = currentVal + '%';
-                    }
-                }
-
-                count++;
-                document.getElementById('rally-count').innerText = count;
-
-            }, 1200 + Math.random() * 800);
-        }
-
-        // Initialize setup logic
-        document.addEventListener('DOMContentLoaded', () => {
-            const setupModal = document.getElementById('setup-modal');
-            const startBtn = document.getElementById('start-match-btn');
-
-            startBtn.addEventListener('click', () => {
-                // 1. Get user input names
-                playersData[0].name = document.getElementById('input-p1').value || 'Player 1';
-                playersData[1].name = document.getElementById('input-p2').value || 'Player 2';
-                playersData[2].name = document.getElementById('input-p3').value || 'Player 3';
-                playersData[3].name = document.getElementById('input-p4').value || 'Player 4';
-
-                // 2. Update UI with new names
-                updateUIWithNames();
-                
-                // 3. Reset stats for new match
-                document.getElementById('rally-time').innerText = "00:00.00";
-                document.getElementById('rally-count').innerText = "0";
-                ['van', 'ohm', 'sunny', 'arm'].forEach(id => {
-                    const energyEl = document.getElementById(`energy-${id}`);
-                    const tagEl = document.getElementById(`tag-${id}`);
-                    if (energyEl) energyEl.innerText = "100";
-                    if (tagEl) tagEl.innerText = "100";
-                    if (energyEl) energyEl.parentElement.parentElement.nextElementSibling.firstElementChild.style.width = '100%';
-                });
-
-                // 4. Hide setup and start simulation
-                setupModal.style.display = 'none';
-                renderShotLogs();
-                simulateLiveMatch();
-            });
-        });
-    </script>
+// ---------- players / history / settings ----------
+function plist(){$('#plist').innerHTML=names.map((n,i)=>`<div class="r" style="padding:6px 0"><span style="width:12px;height:12px;border-radius:50%;background:${COL[i%6]}"></span><span style="flex:1">${n}</span><button data-i="${i}" aria-label="ลบ ${n}">ลบ</button></div>`).join('');
+ $('#who').innerHTML=names.map(n=>`<option>${n}</option>`).join('');stats();
+ $('#plist').querySelectorAll('button').forEach(b=>b.onclick=()=>{names.splice(+b.dataset.i,1);SV('names',names);plist()})}
+$('#bAdd').onclick=()=>{const v=$('#nm').value.trim();if(v&&!names.includes(v)){names.push(v);SV('names',names);$('#nm').value='';plist()}};
+$('#bUrl').onclick=()=>{url=$('#url').value.trim();SV('url',url)};$('#url').value=url;
+$('#bLoad').onclick=async()=>{if(!url)return;try{const d=await (await fetch(url+'?t='+Date.now())).json();
+ const sh=d.Shots.slice(1),m={};sh.forEach(r=>{const o=m[r[3]]=m[r[3]]||{n:0,top:0,sum:0};o.n++;o.top=Math.max(o.top,r[4]);o.sum+=r[4]});
+ $('#hp').innerHTML=Object.entries(m).map(([k,o])=>`<tr><td>${k}</td><td class=n>${o.n}</td><td class=n>${o.top}</td><td class=n>${(o.sum/o.n).toFixed(0)}</td></tr>`).join('');
+ $('#hm').innerHTML=d.Matches.slice(1).reverse().map(r=>{const s=sh.filter(x=>x[0]===r[0]);return`<tr><td>${new Date(r[1]).toLocaleString('th-TH')}<div class="mu">${r[2]}</div></td><td class=n>${s.length} ลูก<div class="mu">เร็วสุด ${Math.max(0,...s.map(x=>x[4]))}</div></td></tr>`}).join('')}
+ catch(e){$('#hm').innerHTML='<tr><td>โหลดไม่ได้ ตรวจ URL และสิทธิ์ Deploy (Anyone)</td></tr>'}};
+const view=()=>{if(det&&!view.on){view.on=1;requestAnimationFrame(loop)}};
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.setAttribute('aria-selected',x===b));
+ ['live','pl','hi','st'].forEach(v=>$('#v-'+v).hidden=v!==b.dataset.v)});
+plist();
+</script>
 </body>
 </html>
