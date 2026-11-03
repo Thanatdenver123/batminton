@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Badminton Analytics Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #1a1a2e; /* Dark theme */
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .progress-bar {
+            transition: width 0.5s ease-in-out;
+        }
+        .player-card {
+            background: linear-gradient(145deg, #16213e, #0f3460);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 flex justify-center">
+
+    <!-- Mobile-sized container to simulate an app view -->
+    <div class="w-full max-w-md bg-gray-900 shadow-2xl rounded-2xl overflow-hidden border border-gray-700 flex flex-col relative">
+        
+        <!-- Header / Status Bar -->
+        <div class="bg-red-600 text-white text-xs font-bold px-4 py-1 flex items-center justify-between">
+            <span class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span> LIVE RALLY
+            </span>
+            <span>JONGNOW SYSTEM</span>
+        </div>
+
+        <!-- Top Score & Rally Info -->
+        <div class="grid grid-cols-3 gap-2 px-4 py-3 bg-gray-800 border-b border-gray-700 text-center">
+            <div>
+                <div class="text-gray-400 text-xs uppercase tracking-wider">Rally Time</div>
+                <div class="text-2xl font-bold font-mono text-cyan-400" id="rally-time">00:23.63</div>
+            </div>
+            <div class="border-l border-r border-gray-600">
+                <div class="text-gray-400 text-xs uppercase tracking-wider">Rally Count</div>
+                <div class="text-2xl font-bold" id="rally-count">21</div>
+            </div>
+            <div>
+                <div class="text-gray-400 text-xs uppercase tracking-wider">Shot Speed</div>
+                <div class="text-2xl font-bold text-yellow-400"><span id="current-speed">17</span> <span class="text-xs text-gray-300">km/h</span></div>
+            </div>
+        </div>
+
+        <!-- Team Matchup -->
+        <div class="bg-black py-2 flex justify-center items-center gap-4 text-sm font-bold tracking-widest border-b-4 border-cyan-500">
+            <span class="text-cyan-400">VAN • OHM</span>
+            <span class="text-yellow-500">VS</span>
+            <span class="text-orange-400">SUNNY • ARM</span>
+        </div>
+
+        <!-- Video / Court Simulation Area -->
+        <div class="relative w-full h-56 bg-gray-800 flex items-center justify-center overflow-hidden border-b border-gray-700">
+            <!-- Simulated Video Background -->
+            <img src="https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=800" alt="Court" class="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-luminosity">
+            
+            <!-- Tracking Overlay Simulation -->
+            <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-90"></div>
+            
+            <!-- Simulated Player Tags on Court -->
+            <div class="absolute top-1/4 left-1/3 bg-slate-900/80 backdrop-blur text-white text-[10px] px-2 py-0.5 rounded border border-green-500 shadow-lg flex justify-between gap-2 w-16"><span class="text-green-400">OHM</span> <span class="font-bold" id="tag-ohm">63</span></div>
+            <div class="absolute top-1/3 left-1/4 bg-slate-900/80 backdrop-blur text-white text-[10px] px-2 py-0.5 rounded border border-cyan-500 shadow-lg flex justify-between gap-2 w-16"><span class="text-cyan-400">Van</span> <span class="font-bold" id="tag-van">53</span></div>
+            <div class="absolute bottom-1/4 right-1/3 bg-slate-900/80 backdrop-blur text-white text-[10px] px-2 py-0.5 rounded border border-orange-500 shadow-lg flex justify-between gap-2 w-16"><span class="text-orange-400">Sunny</span> <span class="font-bold" id="tag-sunny">62</span></div>
+            <div class="absolute bottom-1/3 right-1/4 bg-slate-900/80 backdrop-blur text-white text-[10px] px-2 py-0.5 rounded border border-purple-500 shadow-lg flex justify-between gap-2 w-16"><span class="text-purple-400">ARM</span> <span class="font-bold" id="tag-arm">47</span></div>
+
+            <!-- Simulated Shuttlecock Speed Lock-on -->
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-80 px-3 py-1.5 rounded border border-cyan-400 flex items-center gap-2 shadow-[0_0_15px_rgba(34,211,238,0.4)] transition-all duration-200" id="lock-on-container">
+                <span class="text-cyan-400 text-[10px] font-bold tracking-widest">LOCK ON</span>
+                <span class="font-bold font-mono text-xl" id="lock-on-speed">26 km/h</span>
+            </div>
+        </div>
+
+        <!-- Stats Section (Scrollable) -->
+        <div class="flex-1 bg-gray-900 p-4 overflow-y-auto">
+            
+            <!-- Player Stats Overview -->
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                
+                <!-- Player 1 -->
+                <div class="player-card p-3 rounded-lg border border-cyan-900">
+                    <div class="flex justify-between items-end mb-1">
+                        <span class="font-bold text-cyan-400 text-sm">Van</span>
+                        <span class="text-xs text-gray-400">พลังกาย <span class="text-white font-bold text-lg" id="energy-van">53</span></span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-1.5 mb-2">
+                        <div class="bg-cyan-500 h-1.5 rounded-full progress-bar" style="width: 53%"></div>
+                    </div>
+                    <div class="flex justify-between text-xs">
+                        <span class="text-gray-400">MOVE</span>
+                        <span class="font-mono">26.2 m</span>
+                    </div>
+                </div>
+
+                <!-- Player 2 -->
+                <div class="player-card p-3 rounded-lg border border-green-900">
+                    <div class="flex justify-between items-end mb-1">
+                        <span class="font-bold text-green-400 text-sm">OHM</span>
+                        <span class="text-xs text-gray-400">พลังกาย <span class="text-white font-bold text-lg" id="energy-ohm">63</span></span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-1.5 mb-2">
+                        <div class="bg-green-500 h-1.5 rounded-full progress-bar" style="width: 63%"></div>
+                    </div>
+                    <div class="flex justify-between text-xs">
+                        <span class="text-gray-400">MOVE</span>
+                        <span class="font-mono">21.0 m</span>
+                    </div>
+                </div>
+
+                <!-- Player 3 -->
+                <div class="player-card p-3 rounded-lg border border-orange-900">
+                    <div class="flex justify-between items-end mb-1">
+                        <span class="font-bold text-orange-400 text-sm">Sunny</span>
+                        <span class="text-xs text-gray-400">พลังกาย <span class="text-white font-bold text-lg" id="energy-sunny">62</span></span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-1.5 mb-2">
+                        <div class="bg-orange-500 h-1.5 rounded-full progress-bar" style="width: 62%"></div>
+                    </div>
+                    <div class="flex justify-between text-xs">
+                        <span class="text-gray-400">MOVE</span>
+                        <span class="font-mono">22.3 m</span>
+                    </div>
+                </div>
+
+                <!-- Player 4 -->
+                <div class="player-card p-3 rounded-lg border border-purple-900">
+                    <div class="flex justify-between items-end mb-1">
+                        <span class="font-bold text-purple-400 text-sm">ARM</span>
+                        <span class="text-xs text-gray-400">พลังกาย <span class="text-white font-bold text-lg" id="energy-arm">47</span></span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-1.5 mb-2">
+                        <div class="bg-purple-500 h-1.5 rounded-full progress-bar" style="width: 47%"></div>
+                    </div>
+                    <div class="flex justify-between text-xs">
+                        <span class="text-gray-400">MOVE</span>
+                        <span class="font-mono">30.1 m</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Shot Log Section -->
+            <div>
+                <h3 class="text-sm font-bold text-gray-400 mb-2 border-b border-gray-700 pb-1">SHOT LOG</h3>
+                <div class="space-y-2 text-sm" id="shot-log-container">
+                    <!-- Logs will be populated by JS -->
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Setup Modal Overlay -->
+        <div id="setup-modal" class="absolute inset-0 bg-gray-900 z-50 flex flex-col p-6">
+            <h2 class="text-2xl font-bold text-white mb-6 text-center">ตั้งค่าผู้เล่น (Setup)</h2>
+            
+            <div class="space-y-4 flex-1">
+                <div class="bg-gray-800 p-4 rounded-lg border border-cyan-800">
+                    <h3 class="text-cyan-400 font-bold mb-2">Team 1 (ทีมเหย้า)</h3>
+                    <input type="text" id="input-p1" value="Van" class="w-full bg-gray-700 text-white px-3 py-2 rounded mb-2 border border-gray-600 focus:border-cyan-500 outline-none" placeholder="ชื่อผู้เล่น 1">
+                    <input type="text" id="input-p2" value="OHM" class="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:border-cyan-500 outline-none" placeholder="ชื่อผู้เล่น 2">
+                </div>
+
+                <div class="bg-gray-800 p-4 rounded-lg border border-orange-800">
+                    <h3 class="text-orange-400 font-bold mb-2">Team 2 (ทีมเยือน)</h3>
+                    <input type="text" id="input-p3" value="Sunny" class="w-full bg-gray-700 text-white px-3 py-2 rounded mb-2 border border-gray-600 focus:border-orange-500 outline-none" placeholder="ชื่อผู้เล่น 3">
+                    <input type="text" id="input-p4" value="ARM" class="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:border-orange-500 outline-none" placeholder="ชื่อผู้เล่น 4">
+                </div>
+            </div>
+
+            <button id="start-match-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg shadow-lg mt-4 transition-colors text-lg">
+                เริ่มเกม (Start Match)
+            </button>
+        </div>
+    </div>
+
+    <!-- JavaScript to simulate dynamic data update -->
+    <script>
+        // Store dynamic player names
+        let playersData = [
+            { id: 'van', name: 'Van', color: 'text-cyan-400' },
+            { id: 'ohm', name: 'OHM', color: 'text-green-400' },
+            { id: 'sunny', name: 'Sunny', color: 'text-orange-400' },
+            { id: 'arm', name: 'ARM', color: 'text-purple-400' }
+        ];
+
+        let mockShotLogs = [];
+
+        function renderShotLogs() {
+            const container = document.getElementById('shot-log-container');
+            container.innerHTML = '';
+            
+            mockShotLogs.forEach(log => {
+                const logEl = document.createElement('div');
+                logEl.className = 'flex justify-between items-center py-1 border-b border-gray-800/50';
+                const speedClass = log.speed >= 30 ? 'text-yellow-400 font-bold' : 'text-gray-300';
+
+                logEl.innerHTML = `
+                    <div class="flex items-center gap-4 w-1/2">
+                        <span class="text-gray-500 text-xs w-10 font-mono">${log.time}</span>
+                        <span class="font-semibold ${log.color}">${log.player}</span>
+                    </div>
+                    <div class="${speedClass} font-mono w-1/2 text-right">
+                        ${log.speed} km/h
+                    </div>
+                `;
+                container.appendChild(logEl);
+            });
+        }
+
+        function updateUIWithNames() {
+            // Update Headers (Team Matchup)
+            const teamHeaderSpan = document.querySelectorAll('.bg-black.py-2 span');
+            if (teamHeaderSpan.length >= 3) {
+                teamHeaderSpan[0].innerText = `${playersData[0].name.toUpperCase()} • ${playersData[1].name.toUpperCase()}`;
+                teamHeaderSpan[2].innerText = `${playersData[2].name.toUpperCase()} • ${playersData[3].name.toUpperCase()}`;
+            }
+
+            // Update Court Tags and Player Cards dynamically
+            ['van', 'ohm', 'sunny', 'arm'].forEach((id, index) => {
+                // Update tags on court image
+                const scoreSpan = document.getElementById(`tag-${id}`);
+                if (scoreSpan && scoreSpan.previousElementSibling) {
+                    scoreSpan.previousElementSibling.innerText = playersData[index].name;
+                }
+                
+                // Update names in the stats card list
+                const energySpan = document.getElementById(`energy-${id}`);
+                if (energySpan) {
+                    const nameContainer = energySpan.parentElement.previousElementSibling;
+                    if (nameContainer) {
+                        nameContainer.innerText = playersData[index].name;
+                    }
+                }
+            });
+        }
+
+        function simulateLiveMatch() {
+            let count = 0; 
+            let timeMs = 0; 
+
+            // Timer Loop
+            setInterval(() => {
+                timeMs += 33;
+                let minutes = Math.floor(timeMs / 60000);
+                let seconds = Math.floor((timeMs % 60000) / 1000);
+                let ms = Math.floor((timeMs % 1000) / 10);
+                let displayMin = minutes < 10 ? '0' + minutes : minutes;
+                let displaySec = seconds < 10 ? '0' + seconds : seconds;
+                let displayMs = ms < 10 ? '0' + ms : ms;
+                
+                document.getElementById('rally-time').innerText = `${displayMin}:${displaySec}.${displayMs}`;
+            }, 33);
+
+            // Action Loop (Simulating shots)
+            setInterval(() => {
+                const randomSpeed = Math.floor(Math.random() * (55 - 15 + 1)) + 15;
+                document.getElementById('current-speed').innerText = randomSpeed;
+                document.getElementById('lock-on-speed').innerText = randomSpeed + ' km/h';
+                
+                const lockOnContainer = document.getElementById('lock-on-container');
+                lockOnContainer.classList.add('scale-110', 'border-yellow-400', 'shadow-[0_0_20px_rgba(250,204,21,0.6)]');
+                lockOnContainer.classList.remove('border-cyan-400');
+                
+                setTimeout(() => {
+                    lockOnContainer.classList.remove('scale-110', 'border-yellow-400', 'shadow-[0_0_20px_rgba(250,204,21,0.6)]');
+                    lockOnContainer.classList.add('border-cyan-400');
+                }, 300);
+
+                const activePlayer = playersData[Math.floor(Math.random() * playersData.length)];
+                let currentTimeDisplay = document.getElementById('rally-time').innerText.substring(3); 
+                
+                mockShotLogs.unshift({
+                    time: currentTimeDisplay + 's',
+                    player: activePlayer.name,
+                    color: activePlayer.color,
+                    speed: randomSpeed
+                });
+                if (mockShotLogs.length > 7) mockShotLogs.pop();
+                renderShotLogs();
+
+                const el = document.getElementById(`energy-${activePlayer.id}`);
+                const tagEl = document.getElementById(`tag-${activePlayer.id}`);
+                if (el) {
+                    let currentVal = parseInt(el.innerText);
+                    if(currentVal > 5) {
+                        currentVal -= 1;
+                        el.innerText = currentVal;
+                        if(tagEl) tagEl.innerText = currentVal;
+                        el.parentElement.parentElement.nextElementSibling.firstElementChild.style.width = currentVal + '%';
+                    }
+                }
+
+                count++;
+                document.getElementById('rally-count').innerText = count;
+
+            }, 1200 + Math.random() * 800);
+        }
+
+        // Initialize setup logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const setupModal = document.getElementById('setup-modal');
+            const startBtn = document.getElementById('start-match-btn');
+
+            startBtn.addEventListener('click', () => {
+                // 1. Get user input names
+                playersData[0].name = document.getElementById('input-p1').value || 'Player 1';
+                playersData[1].name = document.getElementById('input-p2').value || 'Player 2';
+                playersData[2].name = document.getElementById('input-p3').value || 'Player 3';
+                playersData[3].name = document.getElementById('input-p4').value || 'Player 4';
+
+                // 2. Update UI with new names
+                updateUIWithNames();
+                
+                // 3. Reset stats for new match
+                document.getElementById('rally-time').innerText = "00:00.00";
+                document.getElementById('rally-count').innerText = "0";
+                ['van', 'ohm', 'sunny', 'arm'].forEach(id => {
+                    const energyEl = document.getElementById(`energy-${id}`);
+                    const tagEl = document.getElementById(`tag-${id}`);
+                    if (energyEl) energyEl.innerText = "100";
+                    if (tagEl) tagEl.innerText = "100";
+                    if (energyEl) energyEl.parentElement.parentElement.nextElementSibling.firstElementChild.style.width = '100%';
+                });
+
+                // 4. Hide setup and start simulation
+                setupModal.style.display = 'none';
+                renderShotLogs();
+                simulateLiveMatch();
+            });
+        });
+    </script>
+</body>
+</html>
