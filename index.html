@@ -21,7 +21,6 @@ body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "Noto Sans Th
 #lw.full #map{position:absolute;right:calc(8px + env(safe-area-inset-right));bottom:8px;width:34%;margin:0;z-index:2;opacity:.92}
 #lw.full .ctl{position:absolute;left:calc(8px + env(safe-area-inset-left));bottom:8px;max-width:58%;z-index:2;background:rgba(11,22,35,.78);border-radius:10px;padding:8px}
 #lw.full .stats{display:none}
-@media (orientation:portrait){#lw.full #rot{display:flex}}
 .ctl{padding:12px}
 nav{z-index:10}
 video,canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
@@ -44,10 +43,10 @@ nav button[aria-selected=true]{color:var(--ac);font-weight:700;box-shadow:inset 
 <div id="lw">
   <div class="hud"><div><small>เวลาแรลลี่</small><b id="rt">00:00.0</b></div><div><small>จำนวนลูก</small><b id="rc">0</b></div><div class="h"><small>ความเร็วลูก กม./ชม.</small><b id="sp">0</b></div></div>
   <div class="stage"><video id="V" playsinline muted></video><canvas id="cv"></canvas><div id="rot">หมุนมือถือเป็นแนวนอน<br>เพื่อดูภาพเต็มจอ</div></div>
-  <canvas id="map" width="536" height="244" role="img" aria-label="แผนผังมุมสูงแสดงตำแหน่งผู้เล่น"></canvas>
   <div class="ctl"><div class="r"><button id="bCam">1. เปิดกล้อง</button><button id="bCal">2. ตั้งคอร์ต</button>
     <label class="mu">ชื่อที่จะผูก <select id="who"></select></label><button id="bGo" class="pri">3. เริ่มบันทึก</button><button id="bFull">เต็มจอ / ออก</button></div>
     <p id="hint">กด "เปิดกล้อง" เพื่อเริ่ม</p></div>
+  <canvas id="map" width="536" height="244" role="img" aria-label="แผนผังมุมสูงแสดงตำแหน่งผู้เล่น"></canvas>
   <div class="p stats"><div class="c"><table><thead><tr><th>ผู้เล่น</th><th class="n">ตี</th><th class="n">เร็วสุด</th><th class="n">วิ่ง (ม.)</th></tr></thead><tbody id="stat"></tbody></table></div></div>
 </div>
 </section>
@@ -98,10 +97,10 @@ const toCourt=(x,y)=>{const w=H[6]*x+H[7]*y+1;return[(H[0]*x+H[1]*y+H[2])/w,(H[3
 const CORN=['มุมซ้ายล่าง (ใกล้กล้อง)','มุมขวาล่าง','มุมขวาบน (ไกลกล้อง)','มุมซ้ายบน'];
 
 // ---------- camera + model ----------
-$('#bCam').onclick=async()=>{full(true);
+$('#bCam').onclick=async()=>{
  try{hint('กำลังเปิดกล้อง…');
   V.srcObject=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}},audio:false});
-  await V.play();cv.width=V.videoWidth;cv.height=V.videoHeight;
+  await V.play();fit();
   hint('กำลังโหลดโมเดลตรวจจับคน (ครั้งแรกอาจใช้เวลาสักครู่)…');
   await tf.ready();
   det=await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet,{modelType:poseDetection.movenet.modelType.MULTIPOSE_LIGHTNING,enableTracking:true,trackerType:poseDetection.TrackerType.BoundingBox});
@@ -155,7 +154,12 @@ let wl=null;
 async function full(on){const w=$('#lw');w.classList.toggle('full',on);
  try{if(on){if(w.requestFullscreen)await w.requestFullscreen();try{await screen.orientation.lock('landscape')}catch(e){}try{wl=await navigator.wakeLock.request('screen')}catch(e){}}
   else{try{screen.orientation.unlock()}catch(e){}if(wl){wl.release();wl=null}if(document.fullscreenElement)await document.exitFullscreen()}}catch(e){}}
-document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)$('#lw').classList.remove('full')});
+let nfs=false;
+document.addEventListener('fullscreenchange',()=>{if(document.fullscreenElement)nfs=true;else if(nfs){nfs=false;$('#lw').classList.remove('full')}});
+function fit(){if(!V.videoWidth)return;const was=cv.width!==V.videoWidth||cv.height!==V.videoHeight;cv.width=V.videoWidth;cv.height=V.videoHeight;
+ $('.stage').style.aspectRatio=V.videoWidth+'/'+V.videoHeight;
+ if(was&&H){H=null;pts=[];step='idle';hint('ภาพเปลี่ยนสัดส่วน กรุณากด "ตั้งคอร์ต" ใหม่')}}
+V.addEventListener('resize',fit);
 $('#bFull').onclick=()=>full(!$('#lw').classList.contains('full'));
 
 // ---------- top-down court map ----------
